@@ -250,6 +250,9 @@ class Piece(pygame.sprite.Sprite):
 		# access dragging attribute
 		return self.dragging
 
+	def draw(self, x, y):
+		self.move_ip(x, y)
+
 	def __str__(self):
 		# create some readable output, if necessary
 		return "{} >> {} on {}".format(type(self).__name__, self.color, self.cell)
@@ -410,16 +413,9 @@ class Game:
 		self.black_pieces = pygame.sprite.Group()
 		self.all_pieces = pygame.sprite.Group()
 
-		'''
-		# create the black pieces
-		for i in range(8):
-			piece = Piece(piece_image)
-
-			piece.update(14 + i*53, 14)
-
-			self.black_pieces.add(piece)
-			self.all_pieces.add(piece)
-		'''
+		# store the mouse data
+		self.offset_x = 0
+		self.offset_y = 0		
 
 		# add board pieces to the sprite lists
 		for piece in self.board.get_pieces():
@@ -474,19 +470,17 @@ class Game:
 						if piece.rectangle().collidepoint(mouse_x, mouse_y):
 							# update dragging attribute
 							piece.drag_toggle()
-							print(piece, piece.is_toggled())
+							# print(piece, piece.is_toggled())
 
 							# get the mouse & piece coordinates
 							piece_pos = piece.get_coordinates()
 			
 							# store the offset relative to said coordinates
 							# for the piece & mouse
-							offset_x = piece_pos[0] - mouse_x
-							offset_y = piece_pos[1] - mouse_y
+							self.set_offset(piece_pos[0] - mouse_x,
+											piece_pos[1] - mouse_y)
 
-							'''
-							piece.update(mouse_x + offset_x, mouse_y + offset_y)
-							'''
+							piece.move(mouse_x, mouse_y)
 
 					except AttributeError:
 						print("Empty Cell: click")
@@ -525,7 +519,11 @@ class Game:
 				if piece and piece.is_dragging():
 					# update the sprite's coordinates using the stored
 					# offset
-					piece.update(mouse_x + offset_x, mouse_y + offset_y)
+
+					mouse_x, mouse_y = event.pos
+					dx, dy = self.get_offset()
+
+					piece.update(mouse_x + dx, mouse_y + dy)
 
 		return False
 
@@ -535,7 +533,12 @@ class Game:
 		once for each frame. """
 
 		# move all the sprites
-		self.all_pieces.update()
+		# self.all_pieces.update()
+		for piece in self.all_pieces:
+
+			piece.get_coordinates()
+
+			piece.update()
 	'''
 
 	def display_frame(self, screen):
@@ -544,6 +547,15 @@ class Game:
 		self.all_pieces.draw(screen)
 
 		pygame.display.flip()
+
+	def get_offset(self):
+		# access the current mouse offset
+		return self.offset_x, self.offset_y
+
+	def set_offset(self, dx, dy):
+		# update the current mouse offset
+		self.offset_x = dx
+		self.offset_y = dy
 
 
 # --- Testing ---
