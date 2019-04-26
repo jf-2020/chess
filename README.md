@@ -1,7 +1,6 @@
 # chess
 
 A simple, straightforward implementation of **Chess** using pygame.
-#
 
 ## Goals
 
