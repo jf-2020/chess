@@ -128,6 +128,33 @@ class Board:
 		# then update its coordinates
 		piece.update(*Board.board_coordinates[row][column])
 
+	def locate_position_on_board(self, x, y):
+		""" given an (x, y) pair (coordinates of a mouse click),
+		locate the respective (rank, file) position on board. """
+		for row in range(8):
+			for column in range(8):
+
+				# get the coordinates to test against, namely the
+				# top left (X, Y)
+				X = Board.board_coordinates[row][column][0]
+				Y = Board.board_coordinates[row][column][1]
+
+				print(X, type(X))
+				print(x, type(x))
+
+				# check if x between X & X + 53
+				if X <= x and x < X + 53:
+					# check if y between Y & Y + 53
+					if Y <= y and y < Y + 53:
+
+						return Board.board_matrix[row][column]
+
+	def get_piece_by_position(self, position):
+		""" find and return a piece by its position on the board. """
+		for piece in self.pieces:
+			if piece.get_position() == position:
+				return piece
+
 	'''
 	def remove_piece(self, piece):
 		""" remove a piece from the board's list of pieces. """
@@ -167,6 +194,13 @@ class Piece(pygame.sprite.Sprite):
 		# give the piece a name
 		self.name = name
 
+		# prepare for dragging events
+		self.dragging = False
+
+	def rectangle(self):
+		# return the piece's sprite rect
+		return self.rect
+
 	def get_color(self):
 		# return the piece's color
 		return self.color
@@ -186,6 +220,17 @@ class Piece(pygame.sprite.Sprite):
 
 		self.rect.x = x
 		self.rect.y = y
+
+	def is_dragging(self):
+		# boolean for whether or not it's being dragged
+		return self.dragging == True
+
+	def drag_toggle(self):
+		# toggle the dragging attribute
+		if self.dragging == False:
+			self.dragging = True
+		else:
+			self.dragging = False
 
 	'''
 	def __str__(self):
@@ -397,6 +442,68 @@ class Game:
 			self.all_pieces.add(piece)
 
 
+	def process_events(self):
+		""" process all of the events. return 'True' if close window
+		is necessary. """
+
+		# handle user events
+		for event in pygame.event.get():
+			# get mouse position
+			mouse_x = pygame.mouse.get_pos()[0]
+			mouse_y = pygame.mouse.get_pos()[1]
+
+			# testing
+			# print(mouse_x)
+			# print(mouse_y)
+
+			if event.type == pygame.QUIT:
+				done = True
+
+			# click & hold
+			elif event.type == pygame.MOUSEBUTTONDOWN:
+				if event.button == 1:
+					# get the relevant underlying piece
+					board_position = self.board.locate_position_on_board(mouse_x, mouse_y)
+					piece = self.board.get_piece_by_position(board_position)
+
+					if piece.rectangle().collidepoint(mouse_x, mouse_y):
+						# update dragging attribute
+						piece.drag_toggle()
+
+						# get the mouse & piece coordinates
+						piece_pos = piece.get_coordinates()
+		
+						# store the offset relative to said coordinates
+						# for the piece & mouse
+						offset_x = piece_pos[0] - mouse_x
+						offset_y = piece_pos[1] - mouse_y
+
+			# released
+			elif event.type == pygame.MOUSEBUTTONUP:
+				if event.button == 1:
+					# get the relevant underlying piece
+					board_position = self.board.locate_position_on_board(mouse_x, mouse_y)
+					piece = self.board.get_piece_by_position(board_position)
+
+					# change dragging attribute to off
+					piece.drag_toggle()
+
+			# # in movement
+			# elif event.type == pygame.MOUSEMOTION:
+			# 	# get the relevant underlying piece
+			# 	board_position = self.board.locate_position_on_board(mouse_x, mouse_y)
+			# 	piece = self.board.get_piece_by_position(board_position)
+
+			# 	print(board_position)
+			# 	print(piece)
+
+			# 	if piece.is_dragging():
+			# 		# update the sprite's coordinates using the stored
+			# 		# offset
+			# 		piece.update(mouse_x + offset_x,
+			# 					 mouse_y + offset_y)
+
+
 	def display_frame(self, screen):
 		# display everything to screen
 		self.board.draw(screen)
@@ -409,21 +516,18 @@ class Game:
 def test(board, game):
 	""" one giant test. """
 
-	# pprint(board.board_coordinates)
+	# Board Matrix
+	pprint(board.board_matrix)
+
+	# Board Coordinates
+	pprint(board.board_coordinates)
 
 	# Images
-
-	# King
-	print("black: {} @ {}".format(board.pieces[0].get_position(),
-								  board.pieces[0].get_coordinates()))
-	print("white: {} @ {}".format(board.pieces[1].get_position(),
-								  board.pieces[1].get_coordinates()))
-
-	# Queen
-	print("black: {} @ {}".format(board.pieces[2].get_position(),
-								  board.pieces[2].get_coordinates()))
-	print("white: {} @ {}".format(board.pieces[3].get_position(),
-								  board.pieces[3].get_coordinates()))
+	for piece in board.get_pieces():
+		color = piece.get_color()
+		position = piece.get_position()
+		coordinates = piece.get_coordinates()
+		print("{}: {} @ {}".format(color, position, coordinates))
 
 
 # --- Main ---
@@ -453,27 +557,21 @@ def main():
 	game = Game(screen)
 
 	# call test
-	test(board, game)
+	# test(board, game)
 
 	# main game loop
 	while not done:
 
-		# handle user events
-		for event in pygame.event.get():
-			if event.type == pygame.QUIT:
-				done = True
-
-			# print out coor @ mouse click
-			elif event.type == pygame.MOUSEBUTTONUP:
-				print("({},{})".format(x, y))
+		# process events
+		done = game.process_events()
 
 		# get mouse coordinates
 		pos = pygame.mouse.get_pos()
 		x, y = pos[0], pos[1]
 
-		clock.tick(20)
-
 		game.display_frame(screen)
+
+		clock.tick(60)
 
 	# quit
 	pygame.quit()
