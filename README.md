@@ -2,6 +2,8 @@
 
 A simple, straightforward implementation of **Chess** using pygame.
 
+#
+
 Author: JF \n
 
 Dates: 4/24 - 4/26
