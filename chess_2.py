@@ -35,6 +35,7 @@ class Board:
 	size = [450, 450] # dimensions of the board
 	position = [0, 0] # where to place the board on the screen
 	board_image = "images/board.png" # relative path to board image
+	piece_in_motion = None # store piece that's in motion
 
 	# TODO: figure out better way to code this in
 	board_matrix = [ 
@@ -49,6 +50,7 @@ class Board:
 					]
 
 	board_coordinates = [[(14 + i*53, 14 + j*53) for i in range(8)] for j in range(8)]
+
 
 	def __init__(self):
 		""" constructor: creates the image of the board. """
@@ -139,8 +141,9 @@ class Board:
 				X = Board.board_coordinates[row][column][0]
 				Y = Board.board_coordinates[row][column][1]
 
-				print(X, type(X))
-				print(x, type(x))
+				# testing
+				# print(X, type(X))
+				# print(x, type(x))
 
 				# check if x between X & X + 53
 				if X <= x and x < X + 53:
@@ -154,6 +157,17 @@ class Board:
 		for piece in self.pieces:
 			if piece.get_position() == position:
 				return piece
+
+	def move_piece(self, piece):
+		# method called when moving sprite (i.e. the piece)
+		
+		# get mouse position
+		pos = pygame.mouse.get_pos()
+
+		# get the offset relative to the mouse coordinates &
+		# piece coordinates
+		offset_x = piece.rect.x - pos[0]
+		offset_y = piece.rect.y - pos[1]
 
 	'''
 	def remove_piece(self, piece):
@@ -232,12 +246,14 @@ class Piece(pygame.sprite.Sprite):
 		else:
 			self.dragging = False
 
-	'''
+	def is_toggled(self):
+		# access dragging attribute
+		return self.dragging
+
 	def __str__(self):
 		# create some readable output, if necessary
-		print("{} >> {} on {}".format(type(self), self.color, self.cell))
-	'''
-
+		return "{} >> {} on {}".format(type(self).__name__, self.color, self.cell)
+	
 
 class King(Piece):
 	""" this class represents the King. it inherits from Piece, so
@@ -261,11 +277,6 @@ class King(Piece):
 		# then, set value attributes
 		self.value = 10**80 # arbitrarily large number per game conditions
 
-	def __str__(self):
-		# create some readable output, if necessary
-
-		print("King >> {} on {}".format(self.color, self.cell))
-
 
 class Queen(Piece):
 	""" this class represents the Queen. it inherits from Piece, so
@@ -287,10 +298,6 @@ class Queen(Piece):
 
 		# then, set the value
 		self.value = 9
-
-	def __str__(self):
-		# create some readable output, if necessary
-		print("Queen >> {} on {}".format(self.color, self.cell))
 
 
 class Rook(Piece):
@@ -314,10 +321,6 @@ class Rook(Piece):
 		# then, set the value
 		self.value = 5
 
-	def __str__(self):
-		# create some readable output, if necessary
-		print("Rook >> {} on {}".format(self.color, self.cell))
-
 
 class Bishop(Piece):
 	""" this class represents the Bishop. it inherits from Piece, so
@@ -339,10 +342,6 @@ class Bishop(Piece):
 
 		# then, set the value
 		self.value = 3
-
-	def __str__(self):
-		# create some readable output, if necessary
-		print("Bishop >> {} on {}".format(self.color, self.cell))
 
 
 class Knight(Piece):
@@ -366,10 +365,6 @@ class Knight(Piece):
 		# then, set the value
 		self.value = 3
 
-	def __str__(self):
-		# create some readable output, if necessary
-		print("Knight >> {} on {}".format(self.color, self.cell))
-
 
 class Pawn(Piece):
 	""" this class represents the Pawn. it inherits from Piece, so
@@ -391,10 +386,6 @@ class Pawn(Piece):
 
 		# then, set the value
 		self.value = 1
-
-	def __str__(self):
-		# create some readable output, if necessary
-		print("Pawn >> {} on {}".format(self.color, self.cell))
 
 
 class Game:
@@ -452,57 +443,100 @@ class Game:
 			mouse_x = pygame.mouse.get_pos()[0]
 			mouse_y = pygame.mouse.get_pos()[1]
 
-			# testing
-			# print(mouse_x)
-			# print(mouse_y)
-
 			if event.type == pygame.QUIT:
-				done = True
+				return True
 
 			# click & hold
 			elif event.type == pygame.MOUSEBUTTONDOWN:
 				if event.button == 1:
-					# get the relevant underlying piece
-					board_position = self.board.locate_position_on_board(mouse_x, mouse_y)
-					piece = self.board.get_piece_by_position(board_position)
 
-					if piece.rectangle().collidepoint(mouse_x, mouse_y):
-						# update dragging attribute
+					# only consider the cases where a valid piece exists  on the
+					# board position underlying mouse position
+					try:
+						# get the relevant underlying piece
+						board_position = self.board.locate_position_on_board(mouse_x, mouse_y)
+						piece = self.board.get_piece_by_position(board_position)
+
+						''' 
+						### TESTING ###
+
+						print(piece)
+						print("rect:", piece.rectangle())
+						print("mouse: ({}, {})".format(mouse_x, mouse_y))
+						print("collision: {}".format(piece.rectangle().collidepoint(mouse_x, mouse_y)))
+
 						piece.drag_toggle()
+						print("drag_toggle()")
+						piece.is_toggled()
+						print("is_toggled()")
+						'''
 
-						# get the mouse & piece coordinates
-						piece_pos = piece.get_coordinates()
-		
-						# store the offset relative to said coordinates
-						# for the piece & mouse
-						offset_x = piece_pos[0] - mouse_x
-						offset_y = piece_pos[1] - mouse_y
+						if piece.rectangle().collidepoint(mouse_x, mouse_y):
+							# update dragging attribute
+							piece.drag_toggle()
+							print(piece, piece.is_toggled())
+
+							# get the mouse & piece coordinates
+							piece_pos = piece.get_coordinates()
+			
+							# store the offset relative to said coordinates
+							# for the piece & mouse
+							offset_x = piece_pos[0] - mouse_x
+							offset_y = piece_pos[1] - mouse_y
+
+							'''
+							piece.update(mouse_x + offset_x, mouse_y + offset_y)
+							'''
+
+					except AttributeError:
+						print("Empty Cell: click")
+						continue
 
 			# released
 			elif event.type == pygame.MOUSEBUTTONUP:
 				if event.button == 1:
-					# get the relevant underlying piece
-					board_position = self.board.locate_position_on_board(mouse_x, mouse_y)
-					piece = self.board.get_piece_by_position(board_position)
 
-					# change dragging attribute to off
-					piece.drag_toggle()
+					# again, only consider the cases where a valid piece exists  on the
+					# board position underlying mouse position
+					try:
+						# get the relevant underlying piece
+						board_position = self.board.locate_position_on_board(mouse_x, mouse_y)
+						piece = self.board.get_piece_by_position(board_position)
 
-			# # in movement
-			# elif event.type == pygame.MOUSEMOTION:
-			# 	# get the relevant underlying piece
-			# 	board_position = self.board.locate_position_on_board(mouse_x, mouse_y)
-			# 	piece = self.board.get_piece_by_position(board_position)
+						# change dragging attribute to off
+						piece.drag_toggle()
 
-			# 	print(board_position)
-			# 	print(piece)
+					except AttributeError:
+						print("Empty Cell: unclick")
+						continue
 
-			# 	if piece.is_dragging():
-			# 		# update the sprite's coordinates using the stored
-			# 		# offset
-			# 		piece.update(mouse_x + offset_x,
-			# 					 mouse_y + offset_y)
+			# in movement
+			elif event.type == pygame.MOUSEMOTION:
+				# get the relevant underlying piece
+				board_position = self.board.locate_position_on_board(mouse_x, mouse_y)
+				piece = self.board.get_piece_by_position(board_position)
 
+				# print(board_position)
+				# print(piece)
+
+				# print(offset_x)
+				# print(offse)
+
+				if piece and piece.is_dragging():
+					# update the sprite's coordinates using the stored
+					# offset
+					piece.update(mouse_x + offset_x, mouse_y + offset_y)
+
+		return False
+
+	'''
+	def run_logic(self):
+		""" update positions & check for sprite collisions. to be run
+		once for each frame. """
+
+		# move all the sprites
+		self.all_pieces.update()
+	'''
 
 	def display_frame(self, screen):
 		# display everything to screen
@@ -565,13 +599,16 @@ def main():
 		# process events
 		done = game.process_events()
 
-		# get mouse coordinates
-		pos = pygame.mouse.get_pos()
-		x, y = pos[0], pos[1]
+		'''
+		# update positions & check collisions
+		game.run_logic()
+		'''
 
+		# draw the current frame
 		game.display_frame(screen)
 
-		clock.tick(60)
+		# pause for next frame
+		clock.tick(144)
 
 	# quit
 	pygame.quit()
