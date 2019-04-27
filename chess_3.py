@@ -111,7 +111,7 @@ class Board:
 		self.pieces.append(piece)
 
 		# then update its coordinates
-		piece.update(*Board.board_coordinates[row][column])
+		piece.update_coordinates(*Board.board_coordinates[row][column])
 
 	def locate_position_on_board(self, x, y):
 		""" given an (x, y) pair (coordinates of a mouse click), locate the 
@@ -196,10 +196,6 @@ class Piece(pygame.sprite.Sprite):
 		# prepare for piece movement events
 		self.selected = False
 
-	def rectangle(self):
-		# return the piece's sprite rect
-		return self.rect
-
 	def get_color(self):
 		# return the piece's color
 		return self.color
@@ -212,31 +208,23 @@ class Piece(pygame.sprite.Sprite):
 		# return the piece's coordinates on the board
 		return self.rect.x, self.rect.y
 
-	def update(self, x, y):
-		# move the piece
-
-		# TODO: update it's board position
-
+	def update_coordinates(self, x, y):
+		# move the piece - coordinates
 		self.rect.x = x
 		self.rect.y = y
 
-	def is_dragging(self):
-		# boolean for whether or not it's being dragged
-		return self.dragging == True
+	def update_position(self, position):
+		# move the piece - algebraic
+		self.cell = position
 
-	def toggle(self):
-		# toggle the dragging attribute
-		if self.selected == False:
-			self.selected = True
-		else:
-			self.selected = False
-
-	def is_toggled(self):
-		# access selected attribute
-		return self.selected
-
-	def draw(self, x, y):
-		self.move_ip(x, y)
+	# TODO: update piece's position relative to the board
+	def update_piece_position(self, move):
+		# move = (piece, algebraic position, coordinates position)
+		piece, position, coordinates = move[0], move[1], move[2]
+		# update its board position
+		piece.update_position(position)
+		# update its board coordinates
+		piece.update_coordinates(coordinates[0], coordinates[1])
 
 	def __str__(self):
 		# create some readable output, if necessary
@@ -375,7 +363,6 @@ class Pawn(Piece):
 		# then, set the value
 		self.value = 1
 
-
 class Game:
 	""" this class represents an instance of the game. if game
 	reset is necessary, just re-instantiate. """
@@ -406,32 +393,67 @@ class Game:
 
 			self.all_pieces.add(piece)
 
+	def check_for_exit(self):
+		""" event handler """
+		for event in pygame.event.get():
+			# check to see if exited:
+			if event.type == pygame.QUIT:
+				# if so, pass True to game loop
+				return True
+
+		# otherwise, continue the game
+		return False
+
+
 	def display_frame(self, screen):
 		""" display everything to the screen. """
 		self.board.draw(screen)
 		self.all_pieces.draw(screen)
 		pygame.display.flip()
 
-	# TODO: potentially refactor
 	def get_move(self):
-		""" ask user for text input representing the algebraic notation corresponding
-		to their next move. then convert it to a coordinate value & return it. """
+		""" ask user to input the algebraic notation corresponding to the
+		piece they want to move & where to move it. then get said piece,
+		and get its coordinates, returning all a triple of it all. """
 		
-		# first, have user input move in algebraic notation
-		move = input("Enter move: ")
-		# then convert algebraic notation to coordinates
-		coordinates = self.board.get_coordinates_by_position(move)
-		return move
+		# first, have user input piece to move in algebraic notation
+		move_this_piece = input("Enter piece to move: ")
+		# second, get the piece on the board
+		piece = self.board.get_piece_by_position(move_this_piece)
+		# third, have user input where to move the piece
+		move_to = input("Enter where to move: ")
+		# then convert algebraic notation of target cell to coordinates
+		coordinates_to = self.board.get_coordinates_by_position(move_to)
+		# return triple
+		return piece, move_to, coordinates_to
+
+	def make_move(self, move):
+		""" this function will take a piece, a target position & target
+		coordinates and update the piece's position on the board as such. """
+		move[0].update_piece_position(move)
+
 
 # --- Testting ---
-def test(game):
+def test(game, screen):
 	""" all tests will be handled here. """
 
 	# test get_move() function
-	game.get_move()
+	move = game.get_move()
+	piece = move[0]
+	print("piece:", piece)
+	print("current pos: %s" % piece.get_position())
+	print("current coor: (%d, %d)" % piece.get_coordinates())
+	print("target pos: %s" % move[1])
+	print("target coor: (%d, %d)" % move[2])
 
-	# exit
-	pygame.quit()
+	# test make_move() function
+	game.make_move(move)
+	print("updated pos: %s" % piece.get_position())
+	print("updated coor: (%d, %d)" % piece.get_coordinates())
+
+	# see if board updates following a move
+	game.display_frame(screen)
+
 
 # --- Main ---
 def main():
@@ -462,22 +484,20 @@ def main():
 	# main game loop
 	while not done:
 
-		'''
-		# process events
-		done = game.process_events()
-
-		# update positions & check collisions
-		game.run_logic()
-		'''
+		# take a turn
+		game.check_for_exit()
 
 		# draw the current frame
 		game.display_frame(screen)
 
 		# testing
-		test(game)
+		test(game, screen)
 
 		# pause for next frame
 		clock.tick(144)
+
+		# IN TESTING #
+		input()
 
 	# quit
 	pygame.quit()
