@@ -6,6 +6,7 @@
 
 # --- Imports ---
 import pygame
+from pprint import pprint
 
 
 # --- Global Constants ---
@@ -149,20 +150,28 @@ class Board:
 
 	def get_piece_by_position(self, position):
 		""" find and return a piece by its position on the board. """
+		# find the piece
 		for piece in self.pieces:
 			if piece.get_position() == position:
 				return piece
+		# otherwise nothing is there, so explicity return none
+		return None
 
-	'''
 	def remove_piece(self, piece):
 		""" remove a piece from the board's list of pieces. """
 
 		# get the piece's position on the board
 		from_position = piece.get_position()
-
 		# remove it
-		del self.pieces[from_position]
-	'''
+		for index, pieces in enumerate(self.pieces):
+			if piece.get_position() == from_position:
+
+				print("deleting:", piece)
+
+				del self.pieces[index]
+
+				# avoid over-deletion problem
+				break
 
 
 # N.B. NOT MEANT TO BE CALLED DIRECTLY #
@@ -180,8 +189,7 @@ class Piece(pygame.sprite.Sprite):
 		self.image.set_colorkey(WHITE)
 
 		# fetch the rectangle object that has the dimensions of the
-		# image. then, update the pos of this obj by setting the
-		# x,y coor values (n.b. via get center)
+		# image.
 		self.rect = self.image.get_rect()
 
 		# associate the piece with a color
@@ -400,10 +408,8 @@ class Game:
 			if event.type == pygame.QUIT:
 				# if so, pass True to game loop
 				return True
-
 		# otherwise, continue the game
 		return False
-
 
 	def display_frame(self, screen):
 		""" display everything to the screen. """
@@ -430,12 +436,67 @@ class Game:
 	def make_move(self, move):
 		""" this function will take a piece, a target position & target
 		coordinates and update the piece's position on the board as such. """
+
+		# first, clear off target position on board. that is, if a piece is
+		# already occupying the space, then remove it as it has been taken
+		piece_to_remove = self.board.get_piece_by_position(move[1])
+		# check that it's indeed non-empty:
+		if piece_to_remove:
+			# first, remove it from the board
+			self.board.remove_piece(piece_to_remove)
+			# then remove it from sprite list
+			piece_to_remove.kill()
+
+		# finally, make the move
 		move[0].update_piece_position(move)
 
+	def get_sprite_lists(self):
+		""" return three lists: black, white and all sprites, respectively. """
+		black_pieces = [piece for piece in self.black_pieces]
+		white_pieces = [piece for piece in self.white_pieces]
+		all_pieces = [piece for piece in self.all_pieces]
+		return black_pieces, white_pieces, all_pieces
 
-# --- Testting ---
+	def pieces_on_board(self):
+		""" access board attribute, pieces. """
+		return self.board.get_pieces()
+
+	def turn_logic(self):
+		""" this function will, effectively, perform the move. """
+		move = self.get_move()
+		self.make_move(move)
+
+	def print_game_state(self):
+		print()
+		print("=== GAME STATE ===")
+		# get sprites
+		sprites = self.get_sprite_lists()[2]
+		# get board pieces
+		pieces = self.pieces_on_board()
+		# now print data
+		print("number of sprites: %d" % len(sprites))
+		print("number of pieces: %d" % len(pieces))
+		print()
+		print("=== sprites list ===")
+		for sprite in sprites:
+			print(str(sprite))
+		print()
+		print("=== pieces on the board ===")
+		for piece in pieces:
+			print(str(piece))
+		print()
+
+# --- Testing ---
 def test(game, screen):
 	""" all tests will be handled here. """
+
+	# first, see what pieces are on the board
+	beginning_pieces_on_board = game.pieces_on_board()
+	pprint(beginning_pieces_on_board)
+	print()
+	# second, determine their positions
+	for piece in beginning_pieces_on_board:
+		print(piece, "| pos: " + piece.get_position())
 
 	# test get_move() function
 	move = game.get_move()
@@ -446,10 +507,50 @@ def test(game, screen):
 	print("target pos: %s" % move[1])
 	print("target coor: (%d, %d)" % move[2])
 
+	# get lens of sprites lists before
+	pieces_before = game.get_sprite_lists()
+	black_sprites_len_before = len(pieces_before[0])
+	white_sprites_len_before = len(pieces_before[1])
+	all_sprites_len_before = len(pieces_before[2])
+	# get len of board pieces list before
+	before_pieces_on_board_len = len(game.pieces_on_board())
+
 	# test make_move() function
 	game.make_move(move)
 	print("updated pos: %s" % piece.get_position())
 	print("updated coor: (%d, %d)" % piece.get_coordinates())
+
+	print()
+
+	# what happened to the pieces?
+	# (1) sprites
+	pieces = game.get_sprite_lists()
+	print("=== black pieces ===")
+	pprint(pieces[0])
+	print()
+	pprint("=== white pieces ===")
+	pprint(pieces[1])
+	print()
+	pprint("=== all pieces ===")
+	pprint(pieces[2])
+	# check if the lens are different b/a (shouldn't be..)
+	black_sprites_len_after = len(pieces[0])
+	white_sprites_len_after = len(pieces[1])
+	all_sprites_len_after = len(pieces[2])
+	print("black: b4 = %d after = %d" % (black_sprites_len_before,
+										black_sprites_len_after))
+	print("white: b4 = %d after = %d" % (white_sprites_len_before,
+										white_sprites_len_after))
+	print("all: b4 = %d after = %d" % (all_sprites_len_before,
+										all_sprites_len_after))
+	print()
+	# (2) the board
+	board_pieces = game.pieces_on_board()
+	print("=== pieces on board ===")
+	pprint(board_pieces)
+	# check if the lens are differnt b/a (shouln't be)
+	print("b4 = %d after = %d" % (before_pieces_on_board_len,
+								len(board_pieces)))
 
 	# see if board updates following a move
 	game.display_frame(screen)
@@ -484,20 +585,26 @@ def main():
 	# main game loop
 	while not done:
 
-		# take a turn
-		game.check_for_exit()
+		# CURRENTLY IN TESTING #
 
 		# draw the current frame
 		game.display_frame(screen)
 
+		# take a turn
+		game.check_for_exit()
+		game.turn_logic()
+		
+		# visual inspection of current state
+		game.print_game_state()
+
 		# testing
-		test(game, screen)
+		# test(game, screen)
 
 		# pause for next frame
 		clock.tick(144)
 
-		# IN TESTING #
-		input()
+		# if pause necessary
+		# input()
 
 	# quit
 	pygame.quit()
