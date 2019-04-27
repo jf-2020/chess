@@ -10,4 +10,4 @@ A simple, straightforward implementation of **Chess** using pygame.
 
 Author: JF
 
-Dates: 4/24 - 4/26
+Dates: 4/24 - 4/27

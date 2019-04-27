@@ -158,17 +158,6 @@ class Board:
 			if piece.get_position() == position:
 				return piece
 
-	def move_piece(self, piece):
-		# method called when moving sprite (i.e. the piece)
-		
-		# get mouse position
-		pos = pygame.mouse.get_pos()
-
-		# get the offset relative to the mouse coordinates &
-		# piece coordinates
-		offset_x = piece.rect.x - pos[0]
-		offset_y = piece.rect.y - pos[1]
-
 	'''
 	def remove_piece(self, piece):
 		""" remove a piece from the board's list of pieces. """
@@ -179,6 +168,7 @@ class Board:
 		# remove it
 		del self.pieces[from_position]
 	'''
+
 
 # N.B. NOT MEANT TO BE CALLED DIRECTLY #
 class Piece(pygame.sprite.Sprite):
@@ -208,8 +198,8 @@ class Piece(pygame.sprite.Sprite):
 		# give the piece a name
 		self.name = name
 
-		# prepare for dragging events
-		self.dragging = False
+		# prepare for piece movement events
+		self.selected = False
 
 	def rectangle(self):
 		# return the piece's sprite rect
@@ -239,16 +229,16 @@ class Piece(pygame.sprite.Sprite):
 		# boolean for whether or not it's being dragged
 		return self.dragging == True
 
-	def drag_toggle(self):
+	def toggle(self):
 		# toggle the dragging attribute
-		if self.dragging == False:
-			self.dragging = True
+		if self.selected == False:
+			self.selected = True
 		else:
-			self.dragging = False
+			self.selected = False
 
 	def is_toggled(self):
-		# access dragging attribute
-		return self.dragging
+		# access selected attribute
+		return self.selected
 
 	def draw(self, x, y):
 		self.move_ip(x, y)
@@ -413,10 +403,6 @@ class Game:
 		self.black_pieces = pygame.sprite.Group()
 		self.all_pieces = pygame.sprite.Group()
 
-		# store the mouse data
-		self.offset_x = 0
-		self.offset_y = 0		
-
 		# add board pieces to the sprite lists
 		for piece in self.board.get_pieces():
 
@@ -428,118 +414,95 @@ class Game:
 
 			self.all_pieces.add(piece)
 
+		# mouse position
+		self.mouse_x = 0
+		self.mouse_y = 0
+		
+		# list of selected pieces
+		self.selected_pieces = list()
+
+		# store 'move to' position
+		self.move_to = list()
 
 	def process_events(self):
 		""" process all of the events. return 'True' if close window
 		is necessary. """
-
-		# handle user events
 		for event in pygame.event.get():
-			# get mouse position
+
+			# get the mouse position
 			mouse_x = pygame.mouse.get_pos()[0]
 			mouse_y = pygame.mouse.get_pos()[1]
 
+			# click the exit button
 			if event.type == pygame.QUIT:
 				return True
 
-			# click & hold
+			# left click only
 			elif event.type == pygame.MOUSEBUTTONDOWN:
-				if event.button == 1:
+				
+				print("selected pieces:", self.get_selected_pieces())
 
-					# only consider the cases where a valid piece exists  on the
-					# board position underlying mouse position
-					try:
-						# get the relevant underlying piece
-						board_position = self.board.locate_position_on_board(mouse_x, mouse_y)
-						piece = self.board.get_piece_by_position(board_position)
+				# selecting a piece
+				if event.button == 1 and not self.get_selected_pieces():
 
-						''' 
-						### TESTING ###
+					# get board position and piece underlying mouse
+					board_position = self.board.locate_position_on_board(mouse_x, mouse_y)
+					piece = self.board.get_piece_by_position(board_position)
 
-						print(piece)
-						print("rect:", piece.rectangle())
-						print("mouse: ({}, {})".format(mouse_x, mouse_y))
-						print("collision: {}".format(piece.rectangle().collidepoint(mouse_x, mouse_y)))
+					# check if there's a collision with the cursor & a sprite
+					if piece.rectangle().collidepoint(mouse_x, mouse_y):
+						
+						# update dragging attribute
+						piece.toggle()
+						print(piece, "<--> toggled: " + str(piece.is_toggled()))
 
-						piece.drag_toggle()
-						print("drag_toggle()")
-						piece.is_toggled()
-						print("is_toggled()")
+						'''
+						# get the mouse & piece coordinates
+						piece_pos = piece.get_coordinates()
 						'''
 
-						if piece.rectangle().collidepoint(mouse_x, mouse_y):
-							# update dragging attribute
-							piece.drag_toggle()
-							# print(piece, piece.is_toggled())
+						# add it to selected pieces
+						self.selected_pieces.append(piece)
 
-							# get the mouse & piece coordinates
-							piece_pos = piece.get_coordinates()
-			
-							# store the offset relative to said coordinates
-							# for the piece & mouse
-							self.set_offset(piece_pos[0] - mouse_x,
-											piece_pos[1] - mouse_y)
+				# dropping a piece
+				elif event.button == 1 and self.get_selected_pieces() and not self.move_to:
+					# store the new mouse position
 
-							piece.move(mouse_x, mouse_y)
+					self.move_to.extend((mouse_x, mouse_y))
 
-					except AttributeError:
-						print("Empty Cell: click")
-						continue
+					print("move to:", self.move_to)
 
-			# released
-			elif event.type == pygame.MOUSEBUTTONUP:
-				if event.button == 1:
+					# update the piece's position
 
-					# again, only consider the cases where a valid piece exists  on the
-					# board position underlying mouse position
-					try:
-						# get the relevant underlying piece
-						board_position = self.board.locate_position_on_board(mouse_x, mouse_y)
-						piece = self.board.get_piece_by_position(board_position)
+					for piece in self.get_selected_pieces():
 
-						# change dragging attribute to off
-						piece.drag_toggle()
+						piece.update(mouse_x, mouse_y)
 
-					except AttributeError:
-						print("Empty Cell: unclick")
-						continue
+						self.update_mouse_pos(mouse_x, mouse_y)
 
-			# in movement
-			elif event.type == pygame.MOUSEMOTION:
-				# get the relevant underlying piece
-				board_position = self.board.locate_position_on_board(mouse_x, mouse_y)
-				piece = self.board.get_piece_by_position(board_position)
-
-				# print(board_position)
-				# print(piece)
-
-				# print(offset_x)
-				# print(offse)
-
-				if piece and piece.is_dragging():
-					# update the sprite's coordinates using the stored
-					# offset
-
-					mouse_x, mouse_y = event.pos
-					dx, dy = self.get_offset()
-
-					piece.update(mouse_x + dx, mouse_y + dy)
+					# remove the piece from selected pieces
+					self.selected_pieces = list()
 
 		return False
 
-	'''
 	def run_logic(self):
 		""" update positions & check for sprite collisions. to be run
 		once for each frame. """
 
-		# move all the sprites
-		# self.all_pieces.update()
 		for piece in self.all_pieces:
 
-			piece.get_coordinates()
+			if piece in self.get_selected_pieces():
+				
+				x, y = self.get_mouse_pos()
 
-			piece.update()
-	'''
+				# print("before:", self.get_selected_pieces())
+
+				# get board position in which mouse cursor lies
+				board_position = self.board.locate_position_on_board(x, y)
+
+				piece.update(x, y)
+
+				# print("after:", self.get_selected_pieces())
 
 	def display_frame(self, screen):
 		# display everything to screen
@@ -548,32 +511,18 @@ class Game:
 
 		pygame.display.flip()
 
-	def get_offset(self):
-		# access the current mouse offset
-		return self.offset_x, self.offset_y
+	def get_selected_pieces(self):
+		# returns a list of selected pieces
+		return self.selected_pieces
 
-	def set_offset(self, dx, dy):
-		# update the current mouse offset
-		self.offset_x = dx
-		self.offset_y = dy
+	def update_mouse_pos(self, x, y):
+		# change the mouse attribute's coordinates
+		self.mouse_x = x
+		self.mouse_y = y
 
-
-# --- Testing ---
-def test(board, game):
-	""" one giant test. """
-
-	# Board Matrix
-	pprint(board.board_matrix)
-
-	# Board Coordinates
-	pprint(board.board_coordinates)
-
-	# Images
-	for piece in board.get_pieces():
-		color = piece.get_color()
-		position = piece.get_position()
-		coordinates = piece.get_coordinates()
-		print("{}: {} @ {}".format(color, position, coordinates))
+	def get_mouse_pos(self):
+		# return mouse position's coordinates
+		return self.mouse_x, self.mouse_y
 
 
 # --- Main ---
@@ -602,19 +551,14 @@ def main():
 	board = Board()
 	game = Game(screen)
 
-	# call test
-	# test(board, game)
-
 	# main game loop
 	while not done:
 
 		# process events
 		done = game.process_events()
 
-		'''
 		# update positions & check collisions
 		game.run_logic()
-		'''
 
 		# draw the current frame
 		game.display_frame(screen)

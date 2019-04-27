@@ -1,7 +1,7 @@
 # chess_3.py - this prgm will attempt to build the basic backbone to a chess game 
 #			   loosely implemented via the pygame
 #			   
-# jf - 4/26
+# jf - 4/27
 
 
 # --- Imports ---
