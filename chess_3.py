@@ -1,13 +1,12 @@
 # chess_3.py - this prgm will attempt to build the basic backbone to a chess game 
-#			   loosely implemented via the pygame
+#			   loosely implemented via the pygame.
+#			 - 4/27 UPDATE: MVP completed.
 #			   
 # jf - 4/27
-
 
 # --- Imports ---
 import pygame
 from pprint import pprint
-
 
 # --- Globals ---
 # color necessary for background & image transparency
@@ -15,7 +14,6 @@ WHITE = (255, 255, 255)
 # board size
 BOARD_WIDTH = 450
 BOARD_HEIGHT = 450
-
 
 # --- Classes ---
 class Board:
@@ -154,7 +152,6 @@ class Board:
 		# lastly, reassign the attribute
 		self.pieces = new_pieces
 
-
 class Piece(pygame.sprite.Sprite):
 	""" this class represents the abstract class template
 	for all pieces in the game. """
@@ -211,7 +208,6 @@ class Piece(pygame.sprite.Sprite):
 		""" human readable string. """
 		return "{} >> {} on {}".format(type(self).__name__, self.color, self.cell)
 	
-
 class King(Piece):
 	""" this class represents the King. it inherits from Piece, so
 	in turn it inherits from pygame's sprite class. """
@@ -230,7 +226,6 @@ class King(Piece):
 			super().__init__(color, cell, King.white, name = "King")
 		# then, set value attributes
 		self.value = 10**80 # arbitrarily large number per game conditions
-
 
 class Queen(Piece):
 	""" this class represents the Queen. it inherits from Piece, so
@@ -251,7 +246,6 @@ class Queen(Piece):
 		# then, set the value
 		self.value = 9
 
-
 class Rook(Piece):
 	""" this class represents the Rook. it inherits from Piece, so
 	in turn it inherits from pygame's sprite class. """
@@ -270,7 +264,6 @@ class Rook(Piece):
 			super().__init__(color, cell, Rook.white, name = "Rook")
 		# then, set the value
 		self.value = 5
-
 
 class Bishop(Piece):
 	""" this class represents the Bishop. it inherits from Piece, so
@@ -291,7 +284,6 @@ class Bishop(Piece):
 		# then, set the value
 		self.value = 3
 
-
 class Knight(Piece):
 	""" this class represents the Knight. it inherits from Piece, so
 	in turn it inherits from pygame's sprite class. """
@@ -310,7 +302,6 @@ class Knight(Piece):
 			super().__init__(color, cell, Knight.white, name = "Knight")
 		# then, set the value
 		self.value = 3
-
 
 class Pawn(Piece):
 	""" this class represents the Pawn. it inherits from Piece, so
@@ -471,8 +462,12 @@ def test(game, screen):
 	print("updated pos: %s" % piece.get_position())
 	print("updated coor: (%d, %d)" % piece.get_coordinates())
 	print()
-	'''
-	# what happened to the pieces?
+	## fifth, see if board updates following a move
+	game.display_frame(screen)
+
+def test_2(game, screen):
+	""" in the event pieces aren't working properly, use this to debug what's
+	happening to the board pieces & sprite lists during each move. """
 	# (1) sprites
 	pieces = game.get_sprite_lists()
 	print("=== black pieces ===")
@@ -501,56 +496,39 @@ def test(game, screen):
 	# check if the lens are differnt b/a (shouln't be)
 	print("b4 = %d after = %d" % (before_pieces_on_board_len,
 								len(board_pieces)))
-	'''
-	# see if board updates following a move
-	game.display_frame(screen)
-
 
 # --- Main ---
 def main():
 	""" main program function. """
-
 	# init the game
 	pygame.init()
-
 	# open and set a window size
 	size = [BOARD_WIDTH, BOARD_HEIGHT]
 	screen = pygame.display.set_mode(size)
-
 	# set the window's title
 	pygame.display.set_caption("My Game")
-
 	# use boolean to keep track of state of close button
 	done = False
-
 	# a measure of time
 	clock = pygame.time.Clock()
-
 	# don't hide the mouse cursor
 	pygame.mouse.set_visible(True)
-
+	# instantiate the necessary per game classes
 	board = Board()
 	game = Game(screen)
-
 	# main game loop
 	while not done:
-
 		# draw the current frame
 		game.display_frame(screen)
-
 		# take a turn
 		game.check_for_exit()
 		game.turn_logic()
-		
 		# visual inspection of current state
 		game.print_game_state(length = "y", lists = "n")
-
 		# pause for next frame
 		clock.tick(144)
-
 	# quit
 	pygame.quit()
-
 
 # when running as script, call main
 if __name__ == "__main__":
